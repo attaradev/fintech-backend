@@ -1,0 +1,77 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  username  String   @unique
+  password  String
+  verified  Boolean  @default(false)
+  walletId  String?
+  wallet    Wallet?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Wallet {
+  id              String             @id @default(cuid())
+  defaultCurrency Currency           @default(GHS)
+  balances        Json
+  userId          String             @unique
+  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions    TransactionEntry[]
+  createdAt       DateTime           @default(now())
+}
+
+model Transaction {
+  id        String             @id @default(cuid())
+  status    TransactionStatus  @default(PENDING)
+  reason    String?
+  entries   TransactionEntry[]
+  reference String             @unique //Indempotency key
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+}
+
+model TransactionEntry {
+  id            String      @id @default(cuid())
+  type          EntryType
+  currency      Currency
+  amount        Decimal     @default(0.0)
+  description   String
+  transactionId String
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  walletId      String
+  account       Wallet      @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  createdAt     DateTime    @default(now())
+}
+
+enum EntryType {
+  DEBIT
+  CREDIT
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum Currency {
+  GHS
+  USD
+  EUR
+  GBP
+}
